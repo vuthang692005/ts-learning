@@ -1,274 +1,252 @@
-## Phần 1: Cơ bản
+# Quy Trình Phát Triển Sản Phẩm Phần Mềm Chuyên Nghiệp
 
-### 1.1. `any` và `unknown` khác nhau thế nào? Khi nào nên dùng `unknown`?
-
-Trả lời: cả any lẫn unknown đều có thể chứa bất kỳ giá trị nào, nhưng unknown ép buộc việc xử lý dữ liệu phải an toàn trước khi sử dụng. Any có thể tùy ý gọi hàm, truy cập thuộc tính hay gán vào biến khác mà không bị cảnh báo, trong khi unknown bị cấm thực hiện bất kỳ thao tác nào (gọi hàm, truy cập thuộc tính...) và không thể gán cho kiểu khác (trừ any hoặc chính nó) nếu chưa kiểm tra kiểu hoặc ép kiểu. Nên dùng unknown cho bất kỳ dữ liệu đầu vào nào chưa xác định trước cấu trúc như kết quả parse JSON, dữ liệu nhận về từ API/bên thứ ba.
-
-### 1.2. `interface` và `type` khác nhau ở đâu? Em sẽ chọn cái nào và vì sao?
-
-Trả lời: interface dùng để định nghĩa khuôn mẫu (contract) cho đối tượng, class với khả năng kế thừa bằng extends, tự động gộp thuộc tính khi trùng tên (declaration merging) và được trình biên dịch tối ưu hiệu năng bộ nhớ đệm tốt hơn; trong khi type là bí danh kiểu dữ liệu linh hoạt hơn nhiều, có thể biểu diễn mọi thứ từ kiểu nguyên thủy, tuple cho đến union hay intersection nhưng không thể gộp khai báo trùng tên. Nên ưu tiên chọn interface làm mặc định khi định nghĩa cấu trúc object, component props, DTO, service contracts và đặc biệt là khi viết hoặc mở rộng các thư viện bên thứ ba (nhờ declaration merging mà không sợ lỗi); và chỉ dùng type khi cần xử lý các kiểu dữ liệu nâng cao như union, tuple hoặc tính toán kiểu phức tạp (conditional/utility types).
-
-### 1.3. `null` và `undefined` khác nhau thế nào? Tuỳ chọn `strictNullChecks` có tác dụng gì?
-
-Trả lời: undefined biểu thị biến đã được khai báo nhưng chưa hề được gán giá trị hoặc thuộc tính không hề tồn tại, trong khi null là một giá trị được lập trình viên chủ động gán vào để biểu thị trạng thái "rỗng" hoặc cố ý không có dữ liệu; tùy chọn strictNullChecks (khi bật) sẽ cấm gán null và undefined vào các kiểu dữ liệu khác như string, number hay object, buộc bạn phải khai báo rõ ràng kiểu kết hợp (union type như string | null | undefined) và kiểm tra giá trị trước khi truy cập thuộc tính/gọi hàm.
-
-### 1.4. Optional chaining `?.` và nullish coalescing `??` dùng để làm gì? Cho ví dụ.
-
-Trả lời: Optional chaining (?.) dùng để đọc thuộc tính hoặc gọi hàm một cách an toàn mà không làm crash chương trình nếu đối tượng phía trước là null hoặc undefined (nó lập tức ngắt chuỗi và trả về undefined), trong khi nullish coalescing (??) là toán tử cung cấp giá trị mặc định dự phòng chỉ khi biểu thức bên trái là null hoặc undefined (khác với || vốn coi cả số 0, chuỗi rỗng "" hay false là giá trị sai).
-
-- Ví dụ: const age = user?.age ?? 18; (Nếu user bị null/undefined, code không bị crash mà lấy giá trị dự phòng 18; nếu user.age = 0, ?? vẫn giữ đúng số 0 chứ không bị nhảy sang 18 như khi dùng || ).
+Tài liệu này tổng hợp các giai đoạn chuẩn trong quy trình phát triển sản phẩm phần mềm (Software Product Development Life Cycle - SDLC), áp dụng theo mô hình Agile/Scrum hiện đại.
 
 ---
 
-## Phần 2: Hệ thống kiểu (so sánh với Java)
+## 1. Sơ đồ tổng quan quy trình (End-to-End Workflow)
 
-### 2.1. Structural typing là gì? Cho ví dụ hai kiểu khác tên nhưng vẫn gán được cho nhau. Java xử lý trường hợp này thế nào?
-
-Trả lời: Structural typing là cơ chế kiểm tra kiểu dữ liệu dựa trên hình dạng/cấu trúc thuộc tính của đối tượng thay vì tên gọi của nó, nghĩa là chỉ cần hai kiểu có chung tập thuộc tính và kiểu dữ liệu tương thích thì chúng được coi là cùng loại và hoàn toàn gán được cho nhau.
-
-- Ví dụ: interface User { name: string; age: number; } và interface Employee { name: string; age: number; role: string; } dù khác tên nhưng ta vẫn gán biến kiểu Employee cho biến kiểu User bình thường vì nó thỏa mãn đủ cấu trúc mà User cần.
-
-Ngược lại, Java sử dụng Nominal typing, nơi việc tương thích kiểu phụ thuộc hoàn toàn vào tên gọi và quan hệ kế thừa tường minh (extends hoặc implements), nên dù hai class User và Employee trong Java có các trường thuộc tính giống hệt nhau thì compiler vẫn báo lỗi không tương thích kiểu nếu gán trực tiếp cho nhau mà không có quan hệ cha-con.
-
-### 2.2. Union type là gì? Với một biến kiểu `string | number`, làm sao biết lúc chạy nó đang là kiểu nào?
-
-Trả lời: Union type là kiểu kết hợp trong TypeScript cho phép một biến có thể mang một trong nhiều kiểu dữ liệu khác nhau (ví dụ string | number nghĩa là giá trị có thể là chuỗi hoặc số), để xác định chính xác kiểu dữ liệu thực tế tại thời điểm chạy, ta sử dụng cơ chế Type Narrowing (thu hẹp kiểu) kết hợp với toán tử typeof của JavaScript bên trong các khối điều kiện (chẳng hạn dùng if (typeof val === "string") để TypeScript tự động hiểu bên trong khối đó val chắc chắn là chuỗi và mở khóa các hàm xử lý chuỗi, còn trong nhánh else nó sẽ tự hiểu val chắc chắn là kiểu number).
-
-### 2.3. Discriminated union là gì? Viết một ví dụ mô tả trạng thái đơn hàng.
-
-Trả lời: Discriminated Union là kỹ thuật kết hợp nhiều kiểu đối tượng lại với nhau bằng Union Type (|), trong đó mỗi đối tượng đều sở hữu chung một thuộc tính định danh để TypeScript dựa vào đó thực hiện Type Narrowing một cách tuyệt đối chính xác thông qua các câu lệnh rẽ nhánh (switch hoặc if/else).
-
-- Ví dụ: mô tả trạng thái đơn hàng
-
-```ts
-type OrderState =
-  | { status: "PENDING" }
-  | { status: "SHIPPED"; trackingNumber: string }
-  | { status: "CANCELLED"; reason: string };
-
-function handleOrder(order: OrderState) {
-  switch (order.status) {
-    case "SHIPPED":
-      // TypeScript tự thu hẹp kiểu và chỉ cho phép đọc trackingNumber tại đây
-      console.log("Mã vận đơn:", order.trackingNumber);
-      break;
-    case "CANCELLED":
-      console.log("Lý do hủy:", order.reason);
-      break;
-    default:
-      console.log("Đơn hàng đang chờ xử lý");
-  }
-}
-```
-
-### 2.4. Vì sao trong TypeScript hiện đại, nhiều người dùng union of literals (ví dụ `'S' | 'M' | 'L'`) thay cho `enum`?
-
-Trả lời: Trong TypeScript hiện đại, nhiều người dùng union of literals thay cho enum vì:
-
-- Union of literals là kiểu dữ liệu thuần compile-time (TypeScript), khi biên dịch sang JavaScript nó bị xóa sạch 100%, không sinh thêm bất kỳ dòng code nào. Trong khi enum là một tính năng lai (hybrid): khi compile, TypeScript buộc phải sinh ra một hàm tự thực thi tạo ra object JavaScript thực tế, làm tăng dung lượng bundle và gây khó khăn cho kỹ thuật Tree-shaking
-- Union of literals dễ dùng, không cần import lòng vòng. Với union chỉ cần truyền thẳng chuỗi 'M' vào hàm setter. Trong khi Với enum bắt buộc phải import enum vào và truyền Size.M vào hàm setter.
-- Dữ liệu trả về từ API backend thường là chuỗi JSON thuần ("S", "M"). Nếu dùng union of literals, TypeScript hiểu và gán được ngay lập tức mà không cần bước parse hay ép kiểu như với enum.
-
-### 2.5. Kiểu dữ liệu của TypeScript có tồn tại lúc chạy (runtime) không? Điều này khác Java thế nào và ảnh hưởng gì khi viết code?
-
-Trả lời: Kiểu dữ liệu của TypeScript hoàn toàn KHÔNG tồn tại lúc chạy vì toàn bộ thông tin kiểu đều bị trình biên dịch loại bỏ sạch sẽ thông qua cơ chế Type Erasure để tạo ra JavaScript thuần; điều này khác biệt hoàn toàn với Java, nơi hệ thống kiểu vẫn được lưu giữ và kiểm tra một phần lúc runtime thông qua bytecode, Reflection hay toán tử instanceof trên các class cụ thể; hệ quả khi viết code là lập trình viên không thể dùng các kiểu của TypeScript để kiểm tra điều kiện lúc chạy (ví dụ viết if (data instanceof UserInterface) sẽ báo lỗi ngay lập tức), buộc ta phải dựa vào các công cụ kiểm tra của JavaScript thuần (typeof, instanceof với class, toán tử in), tự viết hàm Custom Type Guard, hoặc sử dụng các thư viện schema validation lúc runtime để thẩm định dữ liệu ngoại lai từ API trước khi thao tác.
-
----
-
-## Phần 3: Generic và utility type
-
-### 3.1. Viết một hàm generic `first<T>(arr: T[])` trả về phần tử đầu tiên của mảng. Kiểu trả về nên là gì?
-
-Trả lời: Kiểu trả về của hàm nên là T | undefined, bởi vì trong trường hợp mảng truyền vào rỗng ([]), giá trị thực tế lấy ra tại chỉ số đầu tiên (arr[0]) lúc chạy sẽ là undefined — việc khai báo tường minh T | undefined sẽ cảnh báo và bắt buộc người gọi hàm phải kiểm tra tồn tại trước khi thao tác, giúp tránh các lỗi crash runtime.
-
-### 3.2. Cú pháp `<T extends ...>` dùng để làm gì? Cho ví dụ.
-
-Trả lời: Cú pháp <T ... extends> dùng để thiết lập ràng buộc kiểu dữ liệu cho tham số generic, bắt buộc kiểu T khi truyền vào phải thỏa mãn tối thiểu cấu trúc hoặc kế thừa từ kiểu quy định sẵn phía sau từ khóa extends, nhờ đó cho phép lập trình viên truy cập an toàn vào các thuộc tính của ràng buộc đó bên trong hàm mà compiler không báo lỗi.
-
-- Ví dụ:
-
-```ts
-// T bị ràng buộc phải có thuộc tính length là number
-function logLength<T extends { length: number }>(item: T): void {
-  console.log(item.length); // Truy cập item.length an toàn, không bị báo lỗi
-}
-
-// Hợp lệ (vì string và array đều có thuộc tính .length):
-logLength("hello"); // In ra: 5
-logLength([1, 2, 3]); // In ra: 3
-
-logLength(123); // Lỗi vì số không có thuộc tính length
-```
-
-### 3.3. Khi viết API cập nhật sản phẩm (chỉ gửi lên những trường cần sửa), em sẽ định nghĩa kiểu dữ liệu đầu vào thế nào? Dùng utility type nào?
-
-Trả lời: Khi viết API cập nhật sản phẩm, ta nên sử dụng Partial<T> kết hợp với Omit<T, K> để biến các trường cần cập nhật thành tùy chọn, đồng thời loại trừ các thuộc tính cố định không được phép sửa (như id, createdAt).
-
-- Ví dụ:
-
-```ts
-type UpdateProductDto = Partial<Omit<Product, "id" | "createdAt">>;
+```mermaid
+flowchart TD
+    A([💡 1. Khảo sát & Thu thập yêu cầu]) --> B([🎨 2. Thiết kế Hệ thống & UI/UX])
+    B --> C([💻 3. Phát triển & Lập trình])
+    C --> D([🧪 4. Kiểm thử chất lượng QA/QC])
+    D -->|Phát hiện lỗi / Bug| C
+    D -->|Đạt chuẩn kiểm thử| E([🚀 5. Triển khai & Phát hành])
+    E --> F([📈 6. Giám sát & Thu thập phản hồi])
+    F -->|Cải tiến / Tính năng mới| A
 ```
 
 ---
 
-## Phần 4: Bất đồng bộ
+## 2. Chi tiết từng giai đoạn
 
-### 4.1. `async/await` hoạt động thế nào? JavaScript chạy một luồng thì làm sao xử lý được nhiều request cùng lúc?
+### Giai đoạn 1: Khám phá & Thu thập yêu cầu (Discovery & Requirements)
 
-Trả lời: async/await là cú pháp bọc quanh Promise giúp viết code bất đồng bộ trông giống như đồng bộ, trong đó từ khóa async đảm bảo hàm luôn đóng gói giá trị trả về thành một Promise, còn await chỉ tạm dừng cục bộ việc thực thi các dòng code tiếp theo trong hàm đó cho đến khi Promise giải quyết xong mà không hề gây nghẽn luồng chính, lý do JavaScript chỉ chạy đơn luồng nhưng vẫn xử lý hàng nghìn request cùng lúc là nhờ kiến trúc Event Loop phối hợp với môi trường thực thi: luồng chính duy nhất chỉ làm nhiệm vụ tiếp nhận và điều phối, còn các tác vụ I/O tốn thời gian (như truy vấn Database, đọc/ghi file, gửi request mạng) sẽ được đẩy xuống cho tầng đa luồng của hệ điều hành xử lý ngầm, ngay sau đó luồng chính lập tức rảnh tay để đón nhận các request tiếp theo; khi tác vụ ngầm hoàn tất, kết quả được chuyển vào hàng đợi và Event Loop sẽ đưa nó trở lại Call Stack để hàm tiếp tục chạy nốt phần code sau await khi luồng chính rảnh rỗi.
-
-### 4.2. Nếu quên `await` khi gọi một hàm `async` thì chuyện gì xảy ra? Cho ví dụ.
-
-Trả lời: Nếu quên await khi gọi một hàm async, chương trình sẽ không dừng lại để đợi kết quả mà tiếp tục chạy ngay lập tức các dòng code phía sau; lúc này giá trị biến nhận được sẽ là một đối tượng Promise chưa được giải quyết thay vì dữ liệu thực tế, dẫn đến kết quả tính toán bị sai lệch hoặc văng lỗi khi cố truy cập thuộc tính bên trong; đồng thời nếu hàm async đó xảy ra lỗi, khối try-catch bao quanh sẽ không thể bắt được lỗi đó.
-
--Ví dụ:
-
-```ts
-async function getNameById(id: string): Promise<string> {
-  // Giả lập đọc DB mất 1 giây
-  return new Promise((resolve) => {
-    setTimeout(() => resolve("thang"), 1000);
-  });
-}
-
-async function handleCheckUser() {
-  // Quên await:
-  const name = getNameById("123");
-
-  console.log("Đang chờ dữ liệu từ DB...");
-  console.log(name); // In ra: Promise {[[PromiseState]]: 'pending', [[PromiseResult]]: undefined} (chưa có dữ liệu)
-}
-
-handleCheckUser();
-```
-
-### 4.3. Xử lý lỗi trong hàm `async` như thế nào?
-
-Trả lời: Cách xử lý lỗi trong hàm async là bọc đoạn code có await vào khối try-catch (bắt được cả lỗi đồng bộ lẫn Promise.reject), trong đó cần dùng if để ép kiểu an toàn cho biến lỗi (vì TypeScript mặc định error là unknown); ngoài ra có thể gắn trực tiếp .catch() vào cuối lời gọi hàm hoặc dùng khối finally để giải phóng tài nguyên.
+- **Mục tiêu:** Xác định bài toán kinh doanh, nhu cầu thực tế của người dùng và tính khả thi của sản phẩm.
+- **Các hoạt động chính:**
+  - Nghiên cứu thị trường và phân tích đối thủ cạnh tranh.
+  - Phỏng vấn người dùng, khảo sát nhu cầu (User Research).
+  - Viết tài liệu yêu cầu sản phẩm: **PRD** (Product Requirement Document), **User Stories**, tiêu chí chấp nhận (**Acceptance Criteria - AC**).
+- **Bàn giao (Deliverables):** Tài liệu PRD, Product Backlog, danh sách User Stories.
 
 ---
 
-## Phần 5: Thực hành
+### Giai đoạn 2: Thiết kế hệ thống & UI/UX (Design Phase)
 
-### 5.1. Khai báo kiểu props cho một component React `ProductList` nhận vào danh sách sản phẩm và một hàm `onSelect` được gọi khi chọn một sản phẩm.
+- **Mục tiêu:** Định hình giao diện trải nghiệm người dùng và xây dựng bộ khung kỹ thuật vững chắc.
+- **Các hoạt động chính:**
+  - **UI/UX Design:** Vẽ wireframe, luồng người dùng (User Flow), bản mẫu thiết kế chi tiết trên Figma/Adobe XD và Design System.
+  - **System Architecture:** Thiết kế kiến trúc phần mềm (Monolith/Microservices), cơ sở dữ liệu (ERD), đặc tả API (OpenAPI/Swagger).
+- **Bàn giao (Deliverables):** Figma Prototype, ERD Diagram, API Specification docs.
 
-Trả lời:
+---
 
-```ts
-// 1. Định nghĩa kiểu dữ liệu cho từng sản phẩm
-export interface Product {
-  id: string | number;
-  name: string;
-  price: number;
-}
+### Giai đoạn 3: Phát triển & Lập trình (Development / Implementation)
 
-// 2. Khai báo kiểu Props cho ProductList
-export interface ProductListProps {
-  products: Product[];
-  onSelect: (product: Product) => void;
-}
+- **Mục tiêu:** Chuyển hóa bản thiết kế và yêu cầu thành mã nguồn thực tế.
+- **Các hoạt động chính:**
+  - Chia nhỏ công việc thành các **Sprints** (thường từ 1 - 2 tuần theo chuẩn Scrum).
+  - Lập trình Frontend (Web/Mobile) và Backend (APIs, Database logic).
+  - Tổ chức code reviews định kỳ, viết **Unit Test** để đảm bảo chất lượng code.
+  - Áp dụng quy tắc Git Workflow.
+- **Bàn giao (Deliverables):** Mã nguồn hoàn chỉnh kèm Unit Test, merge vào branch phát triển.
 
-// 3. Component con
-export const ProductList: React.FC<ProductListProps> = ({ products, onSelect }) => {
-  return (
-    <ul>
-      {products.map((product) => (
-        <li key={product.id} onClick={() => onSelect(product)}>
-          {product.name} - ${product.price}
-        </li>
-      ))}
-    </ul>
-  );
-}
+---
 
-// 4. Component cha
-export function HomePage() {
-  const [productList] = useState<Product[]>([
-    { id: 1, name: "Bàn phím cơ AKKO", price: 50 },
-    { id: 2, name: "Chuột không dây Logitech", price: 30 },
-    { id: 3, name: "Tai nghe Sony WH-1000XM5", price: 350 },
-  ]);
+### Giai đoạn 4: Kiểm thử & Đảm bảo chất lượng (Testing & QA/QC)
 
-  // click vào item nào thì chuyển hướng đến trang chi tiết item đó
-  const handleSelectProduct = (product: Product) => {
-    // code chuyển trang
-  };
+- **Mục tiêu:** Đảm bảo sản phẩm hoạt động đúng yêu cầu, không có lỗi nghiêm trọng về chức năng và bảo mật.
+- **Các hoạt động chính:**
+  - Viết tài liệu **Test Plan** và **Test Cases**.
+  - Tiến hành kiểm thử đa dạng:
+    - **Functional Testing:** Kiểm tra tính năng nghiệp vụ.
+    - **Integration & Regression Testing:** Kiểm tra độ tương thích giữa các module và đảm bảo code mới không làm hỏng code cũ.
+    - **Performance & Security Testing:** Đánh giá hiệu năng chịu tải và an toàn thông tin.
+  - Kiểm thử chấp nhận người dùng (**UAT - User Acceptance Testing**).
+- **Bàn giao (Deliverables):** Báo cáo kết quả kiểm thử (Test Report), Bug Tracker ticket.
 
-  return (
-    <ProductList products={productList} onSelect={handleSelectProduct} />
-  );
-}
+---
+
+### Giai đoạn 5: Triển khai & Phát hành (Deployment & Release)
+
+- **Mục tiêu:** Đưa sản phẩm lên môi trường thực tế để người dùng cuối sử dụng.
+- **Các hoạt động chính:**
+  - Tự động hóa việc đóng gói và kiểm tra qua quy trình **CI/CD** (GitHub Actions, GitLab CI, Jenkins).
+  - Triển khai tuần tự qua các môi trường:
+    - `Development` $\rightarrow$ `Staging / UAT` $\rightarrow$ `Production`.
+  - Áp dụng chiến lược triển khai an toàn: **Blue-Green Deployment** hoặc **Canary Release** (phát hành dần cho một nhóm nhỏ người dùng).
+- **Bàn giao (Deliverables):** Bản phát hành chính thức (Production Build, App Store / Google Play / Web Server).
+
+---
+
+### Giai đoạn 6: Giám sát, Bảo trì & Thu thập phản hồi (Monitoring & Maintenance)
+
+- **Mục tiêu:** Đảm bảo hệ thống vận hành ổn định 24/7 và thu thập dữ liệu để cải tiến liên tục.
+- **Các hoạt động chính:**
+  - Giám sát hệ thống và log lỗi theo thời gian thực (Sentry, Prometheus, Grafana, Datadog).
+  - Thu thập dữ liệu hành vi người dùng (Google Analytics, Mixpanel, Hotjar).
+  - Sửa lỗi phát sinh khẩn cấp (Hotfixes).
+  - Họp hồi tưởng (**Sprint Retrospective**) để cải tiến quy trình làm việc trong nhóm.
+- **Bàn giao (Deliverables):** Báo cáo độ ổn định (System Uptime Report), danh sách tính năng cải tiến cho Backlog tiếp theo.
+
+---
+
+## 3. Quy trình phối hợp Git (Gitflow Workflow)
+
+### Sơ đồ luồng nhánh (Branching Diagram)
+
+```mermaid
+gitGraph
+    %% Khởi tạo Master (v0.1)
+    commit id: "Phiên bản v0.1" tag: "v0.1"
+
+    %% Nhánh Develop tách từ Master
+    branch develop
+    checkout develop
+    commit id: "Khởi tạo Develop"
+
+    %% Tính năng 1 làm trước
+    branch feature-1
+    checkout feature-1
+    commit id: "Làm tính năng 1"
+    commit id: "Hoàn thiện tính năng 1"
+
+    %% Xử lý Hotfix gấp từ Master
+    checkout main
+    branch hotfix
+    checkout hotfix
+    commit id: "Vá lỗi khẩn cấp"
+
+    %% Hotfix gộp vào Master và đồng bộ sang Develop
+    checkout main
+    merge hotfix id: "Phát hành v0.2" tag: "v0.2"
+    checkout develop
+    merge hotfix id: "Đồng bộ Hotfix -> Develop"
+
+    %% Gộp tính năng 1 vào Develop (kết thúc tính năng 1)
+    checkout develop
+    merge feature-1 id: "Gộp tính năng 1"
+
+    %% Bắt đầu tính năng 2
+    branch feature-2
+    checkout feature-2
+    commit id: "Làm tính năng 2"
+    commit id: "Hoàn thiện tính năng 2"
+
+    %% Gộp tính năng 2 vào Develop (kết thúc tính năng 2)
+    checkout develop
+    merge feature-2 id: "Gộp tính năng 2"
+
+    %% Nhánh Release chuẩn bị đóng gói bản v1.0
+    branch release
+    checkout release
+    commit id: "Kiểm thử & sửa lỗi nhỏ"
+
+    %% Đưa Release lên Master và đồng bộ lại Develop (kết thúc đợt phát hành)
+    checkout main
+    merge release id: "Phát hành v1.0" tag: "v1.0"
+    checkout develop
+    merge release id: "Đồng bộ Release -> Develop"
 ```
 
-### 5.2. Khai báo kiểu cho body của request `POST /products` trong Express, và viết handler sử dụng kiểu đó.
+---
 
-Trả lời:
+### Giải thích vai trò các nhánh và quy tắc làm việc
 
-```ts
-// Khai báo kiểu dữ liệu cho Body mà client gửi lên (CreateProductDTO)
-export interface CreateProductBody {
-  name: string;
-  price: number;
-  description?: string;
-}
+Mô hình Gitflow chuẩn gồm 2 nhánh chính lâu dài (`master`, `develop`) và 3 nhóm nhánh phụ trợ (`hotfix`, `feature`, `release`)[cite: 1]:
 
-// Viết handler sử dụng kiểu đó
-export const createProductHandler = (
-  req: Request<{}, {}, CreateProductBody>,
-  res: Response,
-) => {
-  const { name, price, description } = req.body;
+1. **Nhánh `master` (hoặc `main` - Nhánh Production):**
+   - **Mục đích:** Lưu trữ mã nguồn đã được kiểm thử kỹ lưỡng và đang chạy trực tiếp trên môi trường thực tế (Production)[cite: 1].
+   - **Đánh dấu phiên bản (Git Tag):** Mỗi lần cập nhật code lên `master` đều được gắn một Tag tương ứng với phiên bản phát hành (`v0.1`, `v0.2`, `v1.0`)[cite: 1].
+   - **Quy tắc:** Tuyệt đối không lập trình hay commit trực tiếp vào `master`[cite: 1]. Nhánh này chỉ nhận code thông qua thao tác merge từ `hotfix` hoặc `release`[cite: 1].
 
-  // Xử lý logic nghiệp vụ
-  if (!name || price <= 0) {
-    return res.status(400).json({ message: "Dữ liệu không hợp lệ" });
-  }
+2. **Nhánh `develop` (Nhánh phát triển trung tâm):**
+   - **Mục đích:** Là nhánh tích hợp mã nguồn chính của nhóm phát triển, chứa các tính năng mới nhất chuẩn bị cho phiên bản tiếp theo[cite: 1].
+   - **Quy tắc:** Tách ra từ `master` ngay từ đầu[cite: 1]. Đóng vai trò là nhánh gốc để sinh ra các nhánh `feature` và tiếp nhận kết quả merge từ `feature`, `hotfix`, `release` để mã nguồn luôn đồng bộ[cite: 1].
 
-  // trả về response
-  return res.status(201).json({
-    message: "Tạo sản phẩm thành công",
-    data: { id: Date.now(), name, price, description },
-  });
-};
+3. **Nhánh `hotfix` (Sửa lỗi khẩn cấp trên Production):**
+   - **Mục đích:** Xử lý các sự cố nghiêm trọng phát sinh trực tiếp ở bản `v0.1` trên môi trường thực tế mà không thể chờ đợt phát hành định kỳ[cite: 1].
+   - **Luồng đi:**
+     - Tách trực tiếp từ `master` tại thời điểm bản `v0.1` gặp lỗi[cite: 1].
+     - Sau khi vá lỗi xong, merge ngược lại vào `master` và gắn nhãn phiên bản vá lỗi `v0.2`[cite: 1].
+     - **Bắt buộc:** Phải merge đồng bộ ngay xuống nhánh `develop` để tránh việc lỗi cũ bị xuất hiện lại ở các bản cập nhật sau[cite: 1].
+
+4. **Nhánh `feature` (Phát triển tính năng mới):**
+   - **Mục đích:** Dành cho lập trình viên xây dựng từng module hoặc tính năng riêng biệt (`feature-1`, `feature-2`)[cite: 1].
+   - **Luồng đi:**
+     - Tách nhánh từ `develop`[cite: 1].
+     - Lập trình viên commit các bước xử lý nội bộ trên nhánh riêng của mình[cite: 1].
+     - Khi tính năng hoàn tất, merge quay trở lại vào `develop` rồi xóa nhánh feature để giữ kho lưu trữ gọn gàng[cite: 1].
+
+5. **Nhánh `release` (Đóng gói và kiểm thử trước phát hành):**
+   - **Mục đích:** Chuẩn bị ra mắt phiên bản lớn (`v1.0`)[cite: 1]. Giai đoạn này dừng việc thêm tính năng mới, chỉ tập trung kiểm thử (QA/QC), dọn dẹp cấu hình và sửa các lỗi nhỏ phát sinh[cite: 1].
+   - **Luồng đi:**
+     - Tách ra từ `develop` khi các tính năng cần thiết cho đợt phát hành đã sẵn sàng[cite: 1].
+     - Tiến hành kiểm thử và hoàn thiện commit cuối cùng[cite: 1].
+     - Merge vào `master` để gắn nhãn phát hành chính thức (`v1.0`)[cite: 1].
+     - Merge đồng bộ ngược lại vào `develop` để đưa các chỉnh sửa/vá lỗi trong đợt release vào nhánh phát triển[cite: 1].
+
+---
+
+## 4. Quy trình phát triển Agile/Scrum (Scrum Framework)
+
+Agile là triết lý phát triển phần mềm linh hoạt, thích ứng nhanh với thay đổi; trong đó **Scrum** là framework triển khai phổ biến nhất, tổ chức công việc theo các chu kỳ lặp đi lặp lại gọi là **Sprint** (thường kéo dài 1 đến 2 tuần).
+
+---
+
+### Sơ đồ vòng lặp Scrum (Scrum Lifecycle Diagram)
+
+```mermaid
+flowchart LR
+    PB[(📋 Product Backlog)] -->|Sprint Planning| SB[(🎯 Sprint Backlog)]
+
+    subgraph SprintCycle [Vòng lặp Sprint: 1 - 2 tuần]
+        direction TB
+        SB --> Dev[💻 Phát triển & Lập trình]
+        Dev --> Daily[🗣️ Daily Standup: 15 phút mỗi ngày]
+        Daily --> Dev
+    end
+
+    Dev --> Inc([📦 Sản phẩm tăng trưởng - Increment])
+
+    Inc --> Review[👀 Sprint Review: Demo nghiệm thu]
+    Review --> Retro[💡 Sprint Retrospective: Họp cải tiến quy trình]
+    Retro -->|Cải tiến đưa vào| PB
 ```
 
-### 5.3. Đoạn code dưới đây có lỗi gì? Sửa lại cho đúng.
+---
 
-```ts
-interface Product {
-  id: number;
-  name: string;
-  price?: number;
-}
+### 1. Ba vai trò cốt lõi trong Scrum (Scrum Roles)
 
-function getTotal(products: Product[]): number {
-  return products.reduce((sum, p) => sum + p.price, 0);
-}
+- **Product Owner (PO):** Đại diện cho khách hàng và người dùng. Chịu trách nhiệm định hình tầm nhìn sản phẩm, ưu tiên các hạng mục công việc trong Product Backlog nhằm tối đa hóa giá trị kinh doanh.
+- **Scrum Master (SM):** Người dẫn dắt, bảo vệ nhóm khỏi các yếu tố gián đoạn từ bên ngoài, loại bỏ chướng ngại vật (impediments) và đảm bảo các thành viên thực hành đúng các quy tắc Scrum.
+- **Development Team (Dev, QA, UI/UX):** Nhóm liên chức năng (Cross-functional), tự quản lý (Self-organizing), trực tiếp thiết kế, lập trình và kiểm thử để chuyển hóa yêu cầu thành tính năng hoàn chỉnh.
 
-async function loadProducts(): Product[] {
-  const res = await fetch("/api/products");
-  return res.json();
-}
-```
+---
 
-Trả lời:
+### 2. Ba tạo tác quan trọng (Scrum Artifacts)
 
-```ts
-interface Product {
-  id: number;
-  name: string;
-  price?: number;
-}
+- **Product Backlog:** Danh sách tổng hợp toàn bộ các tính năng, yêu cầu, cải tiến và bản sửa lỗi cần làm cho sản phẩm (được PO sắp xếp theo thứ tự ưu tiên).
+- **Sprint Backlog:** Tập hợp các User Story được chọn ra từ Product Backlog trong buổi Sprint Planning để đội ngũ cam kết hoàn thành trong phạm vi một Sprint.
+- **Increment (Sản phẩm tăng trưởng):** Phần sản phẩm hoàn thiện, đã vượt qua định nghĩa hoàn thành (**DoD - Definition of Done**), có khả năng chạy được thực tế và sẵn sàng bàn giao cho người dùng.
 
-// 1. Sửa lỗi `p.price` có thể undefined bằng `p.price ?? 0`
-function getTotal(products: Product[]): number {
-  return products.reduce((sum, p) => sum + (p.price ?? 0), 0);
-}
+---
 
-// 2. Sửa kiểu trả về của hàm async thành Promise<Product[]>
-async function loadProducts(): Promise<Product[]> {
-  const res = await fetch("/api/products");
-  return res.json();
-}
-```
+### 3. Bốn sự kiện chuẩn trong một chu kỳ Sprint (Scrum Events)
+
+1. **Họp kế hoạch Sprint (Sprint Planning):**
+   - **Mục tiêu:** PO giải thích các tính năng cần ưu tiên; cả nhóm cùng thảo luận, ước lượng khối lượng công việc (Story Points) và chọn ra các User Story đưa vào Sprint Backlog.
+2. **Họp báo cáo hằng ngày (Daily Standup):**
+   - **Thời lượng:** Giới hạn tối đa 15 phút đầu mỗi ngày làm việc.
+   - **Mục tiêu:** Từng thành viên trả lời ngắn gọn 3 câu hỏi:
+     - _Hôm qua tôi đã làm gì?_
+     - _Hôm nay tôi sẽ làm gì?_
+     - _Tôi có đang gặp khó khăn/vướng mắc (blocker) gì không?_
+3. **Họp rà soát & Demo (Sprint Review):**
+   - **Mục tiêu:** Diễn ra vào cuối Sprint. Nhóm demo trực tiếp tính năng đã hoàn thiện cho PO và các bên liên quan (Stakeholders) xem thử và nhận phản hồi thực tế.
+4. **Họp hồi tưởng & Cải tiến (Sprint Retrospective):**
+   - **Mục tiêu:** Diễn ra ngay sau buổi Review. Nhóm ngồi lại nhìn nhận nội bộ:
+     - _Điều gì đã làm tốt? (What went well?)_
+     - _Điều gì chưa tốt cần khắc phục? (What didn't go well?)_
+     - _Hành động cụ thể nào cần cải tiến trong Sprint kế tiếp? (Action items)_
